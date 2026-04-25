@@ -6,11 +6,10 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
 
 function signToken(userId: string, organizationId: string) {
-  return jwt.sign({ userId, organizationId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign({ userId, organizationId }, JWT_SECRET, { expiresIn: 604800 });
 }
 
 // Register
