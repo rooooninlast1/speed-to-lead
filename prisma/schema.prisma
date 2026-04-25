@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("starter") // starter, pro, enterprise
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  forms     Form[]
+  leads     Lead[]
+  rules     RoutingRule[]
+  templates MessageTemplate[]
+  sources   LeadSource[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  password       String
+  name           String
+  role           String       @default("member") // admin, manager, member
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  avatar         String?
+  isActive       Boolean      @default(true)
+  lastLogin      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedLeads Lead[]
+  notifications Notification[]
+  activities    Activity[]
+}
+
+model Form {
+  id             String       @id @default(uuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  endpoint       String       @unique // unique URL slug for the form
+  fields         Json         // custom form fields configuration
+  redirectUrl    String?
+  isActive       Boolean      @default(true)
+  successMessage String       @default("Thanks! We'll be in touch shortly.")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  leads Lead[]
+}
+
+model LeadSource {
+  id             String       @id @default(uuid())
+  name           String       // website, facebook, referral, etc.
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  utmSource      String?
+  utmMedium      String?
+  createdAt      DateTime     @default(now())
+
+  leads Lead[]
+}
+
+model Lead {
+  id             String       @id @default(uuid())
+  email          String
+  firstName      String
+  lastName       String?
+  phone          String?
+  company        String?
+  metadata       Json?        // any additional data
+
+  // Scoring & Qualification
+  score          Int          @default(0)
+  qualification  String       @default("new") // new, qualified, unqualified, hot, customer
+  tags           String[]     @default([])
+
+  // Status tracking
+  status         String       @default("new") // new, contacted, engaged, converted, closed
+  isContacted    Boolean      @default(false)
+  contactedAt    DateTime?
+  convertedAt    DateTime?
+
+  // Relationships
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  formId         String?
+  form           Form?        @relation(fields: [formId], references: [id])
+  sourceId       String?
+  source         LeadSource?  @relation(fields: [sourceId], references: [id])
+
+  // Assignment
+  assignedToId   String?
+  assignedTo     User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  routedBy       String?      // rule name that routed this lead
+
+  // Follow-up tracking
+  followUpSent   Boolean      @default(false)
+  followUpSentAt DateTime?
+  messageSentId  String?      @unique
+  messageSent    MessageLog?  @relation(fields: [messageSentId], references: [id])
+
+  // Timestamps
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  activities     Activity[]
+}
+
+model RoutingRule {
+  id             String       @id @default(uuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  conditions     Json         // conditions for routing (score threshold, tags, source, etc.)
+  action         String       // assign_to_user, assign_to_group, round_robin
+  targetId       String?      // user ID or group ID
+  isActive       Boolean      @default(true)
+  priority       Int          @default(0) // higher = checked first
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model MessageTemplate {
+  id             String       @id @default(uuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  subject        String
+  body           String       // can use {{variables}}
+  channel        String       @default("email") // email, sms
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  messageLogs MessageLog[]
+}
+
+model MessageLog {
+  id          String           @id @default(uuid())
+  leadId      String
+  lead        Lead             @relation(fields: [leadId], references: [id])
+  templateId  String?
+  template    MessageTemplate? @relation(fields: [templateId], references: [id])
+  channel     String
+  subject     String?
+  body        String
+  status      String           // sent, failed, delivered, opened, clicked
+  sentAt      DateTime         @default(now())
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  error       String?
+}
+
+model Activity {
+  id             String       @id @default(uuid())
+  leadId         String?
+  lead           Lead?        @relation(fields: [leadId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  organizationId String?
+  action         String       // lead_created, lead_qualified, message_sent, lead_assigned, etc.
+  description    String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // new_lead, lead_assigned, lead_qualified
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  leadId    String?
+  createdAt DateTime @default(now())
+}
+
+model ApiKey {
+  id             String   @id @default(uuid())
+  key            String   @unique
+  organizationId String
+  name           String
+  permissions    String[] @default([])
+  lastUsed       DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
