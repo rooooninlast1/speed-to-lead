@@ -27,4 +27,4 @@ services:
     
 databases:
   - name: speed-to-lead-db
-    plan: free
+    plan: free under the speed-to-lead-api
