@@ -23,4 +23,4 @@ services:
 
 databases:
   - name: speed-to-lead-db
-    plan: starter
+    plan: free
