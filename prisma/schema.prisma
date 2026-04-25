@@ -1,17 +1,17 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 model Organization {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
-  plan      String   @default("starter") // starter, pro, enterprise
+  plan      String   @default("starter")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -28,7 +28,7 @@ model User {
   email          String       @unique
   password       String
   name           String
-  role           String       @default("member") // admin, manager, member
+  role           String       @default("member")
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   avatar         String?
@@ -37,7 +37,7 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  assignedLeads Lead[]
+  assignedLeads Lead[]       @relation("AssignedLeads")
   notifications Notification[]
   activities    Activity[]
 }
@@ -47,8 +47,8 @@ model Form {
   name           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  endpoint       String       @unique // unique URL slug for the form
-  fields         Json         // custom form fields configuration
+  endpoint       String       @unique
+  fields         Json
   redirectUrl    String?
   isActive       Boolean      @default(true)
   successMessage String       @default("Thanks! We'll be in touch shortly.")
@@ -60,7 +60,7 @@ model Form {
 
 model LeadSource {
   id             String       @id @default(uuid())
-  name           String       // website, facebook, referral, etc.
+  name           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   utmSource      String?
@@ -77,20 +77,17 @@ model Lead {
   lastName       String?
   phone          String?
   company        String?
-  metadata       Json?        // any additional data
+  metadata       Json?
 
-  // Scoring & Qualification
   score          Int          @default(0)
-  qualification  String       @default("new") // new, qualified, unqualified, hot, customer
+  qualification  String       @default("new")
   tags           String[]     @default([])
 
-  // Status tracking
-  status         String       @default("new") // new, contacted, engaged, converted, closed
+  status         String       @default("new")
   isContacted    Boolean      @default(false)
   contactedAt    DateTime?
   convertedAt    DateTime?
 
-  // Relationships
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   formId         String?
@@ -98,22 +95,20 @@ model Lead {
   sourceId       String?
   source         LeadSource?  @relation(fields: [sourceId], references: [id])
 
-  // Assignment
   assignedToId   String?
   assignedTo     User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
-  routedBy       String?      // rule name that routed this lead
+  routedBy       String?
 
-  // Follow-up tracking
   followUpSent   Boolean      @default(false)
   followUpSentAt DateTime?
   messageSentId  String?      @unique
-  messageSent    MessageLog?  @relation(fields: [messageSentId], references: [id])
+  messageSent    MessageLog?  @relation("LeadSentMessage", fields: [messageSentId], references: [id])
 
-  // Timestamps
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   activities     Activity[]
+  messageLogs    MessageLog[] @relation("MessageLogToLead")
 }
 
 model RoutingRule {
@@ -121,11 +116,11 @@ model RoutingRule {
   name           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  conditions     Json         // conditions for routing (score threshold, tags, source, etc.)
-  action         String       // assign_to_user, assign_to_group, round_robin
-  targetId       String?      // user ID or group ID
+  conditions     Json
+  action         String
+  targetId       String?
   isActive       Boolean      @default(true)
-  priority       Int          @default(0) // higher = checked first
+  priority       Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
@@ -136,8 +131,8 @@ model MessageTemplate {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   subject        String
-  body           String       // can use {{variables}}
-  channel        String       @default("email") // email, sms
+  body           String
+  channel        String       @default("email")
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -148,18 +143,20 @@ model MessageTemplate {
 model MessageLog {
   id          String           @id @default(uuid())
   leadId      String
-  lead        Lead             @relation(fields: [leadId], references: [id])
+  lead        Lead             @relation("MessageLogToLead", fields: [leadId], references: [id])
   templateId  String?
   template    MessageTemplate? @relation(fields: [templateId], references: [id])
   channel     String
   subject     String?
   body        String
-  status      String           // sent, failed, delivered, opened, clicked
+  status      String
   sentAt      DateTime         @default(now())
   deliveredAt DateTime?
   openedAt    DateTime?
   clickedAt   DateTime?
   error       String?
+
+  sentToLead  Lead?            @relation("LeadSentMessage")
 }
 
 model Activity {
@@ -169,7 +166,7 @@ model Activity {
   userId         String?
   user           User?        @relation(fields: [userId], references: [id])
   organizationId String?
-  action         String       // lead_created, lead_qualified, message_sent, lead_assigned, etc.
+  action         String
   description    String
   metadata       Json?
   createdAt      DateTime     @default(now())
@@ -179,7 +176,7 @@ model Notification {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // new_lead, lead_assigned, lead_qualified
+  type      String
   title     String
   message   String
   isRead    Boolean  @default(false)
