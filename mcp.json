@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "render": {
+      "command": "/root/.local/bin/render-mcp-server",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "RENDER_API_KEY": "YOUR_RENDER_API_KEY_HERE"
+      }
+    }
+  }
+}
