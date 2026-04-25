@@ -1,10 +1,10 @@
 services:
   - type: web
     name: speed-to-lead-api
-    env: node
+    dockerfilePath: Dockerfile
+    dockerCommand: ""
+    dockerContext: /
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
