@@ -20,7 +20,9 @@ services:
           property: connectionString
       - key: NODE_ENV
         value: production
-
+  - type: redis
+    name: speed-to-lead-redis
+    plan: free # You can change this to a paid plan later if needed
 databases:
   - name: speed-to-lead-db
     plan: free
