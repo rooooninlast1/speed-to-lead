@@ -22,7 +22,9 @@ services:
         value: production
   - type: redis
     name: speed-to-lead-redis
-    plan: free # You can change this to a paid plan later if needed
+    ipAllowList: [] # Explicitly block external IPs; allow internal services
+    plan: free
+    
 databases:
   - name: speed-to-lead-db
     plan: free
