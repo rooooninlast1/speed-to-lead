@@ -3,7 +3,7 @@ services:
     name: speed-to-lead-api
     env: node
     plan: free
-    buildCommand: npm install --no-audit
+    buildCommand: npm install
     startCommand: npx tsx src/index.ts
     envVars:
       - key: DATABASE_URL
